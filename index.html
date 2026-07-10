@@ -238,14 +238,15 @@ const gameSounds = {};
 let audioInitialized = false;
 
 try {
+    // Убираем 'sounds/' из путей, так как файлы теперь лежат в корне репозитория
     const soundFiles = {
-        'ball_hit':    'sounds/ball_hit.mp3',
-        'ball_wall':   'sounds/ball_wall.mp3',
-        'chip_wall':   'sounds/chip_wall.mp3',
-        'chips_hit':   'sounds/chips_hit.mp3',
-        'crowd_shout': 'sounds/crowd_shout.mp3',
-        'goal':        'sounds/goal.mp3',
-        'click':       'sounds/ball_hit.mp3'
+        'ball_hit':    'ball_hit.mp3',
+        'ball_wall':   'ball_wall.mp3',
+        'chip_wall':   'chip_wall.mp3',
+        'chips_hit':   'chips_hit.mp3',
+        'crowd_shout': 'crowd_shout.mp3',
+        'goal':        'goal.mp3',
+        'click':       'ball_hit.mp3'
     };
 
     for (let key in soundFiles) {
@@ -259,22 +260,6 @@ try {
 } catch (e) {
     console.error(e);
 }
-
-function initAudio() {
-    if (audioInitialized) return;
-    try {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx && audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
-        audioInitialized = true;
-    } catch (e) {
-        console.error(e);
-    }
-}
-
 function playSound(type, volume = 1.0) {
     try {
         if (typeof soundEnabled !== 'undefined' && !soundEnabled) return;
