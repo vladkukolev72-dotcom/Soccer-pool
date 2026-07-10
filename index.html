@@ -237,33 +237,44 @@ const TOURNAMENT_PRESET_TEAMS = [
 const gameSounds = {};
 let audioInitialized = false;
 
-try {
-    // Убираем 'sounds/' из путей, так как файлы теперь лежат в корне репозитория
-    const soundFiles = {
-        'ball_hit':    'ball_hit.mp3',
-        'ball_wall':   'ball_wall.mp3',
-        'chip_wall':   'chip_wall.mp3',
-        'chips_hit':   'chips_hit.mp3',
-        'crowd_shout': 'crowd_shout.mp3',
-        'goal':        'goal.mp3',
-        'click':       'ball_hit.mp3'
-    };
+// ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ (Её не хватало, из-за этого Eruda ругалась!)
+function initAudio() {
+    if (audioInitialized) return; // Если уже запустили, второй раз не пересоздаем
+    
+    try {
+        // Пути прямые, так как файлы лежат в корне рядом с index.html
+        const soundFiles = {
+            'ball_hit':    'ball_hit.mp3',
+            'ball_wall':   'ball_wall.mp3',
+            'chip_wall':   'chip_wall.mp3',
+            'chips_hit':   'chips_hit.mp3',
+            'crowd_shout': 'crowd_shout.mp3',
+            'goal':        'goal.mp3',
+            'click':       'ball_hit.mp3'
+        };
 
-    for (let key in soundFiles) {
-        gameSounds[key] = new Audio(soundFiles[key]);
-        gameSounds[key].preload = 'auto';
-    }
+        for (let key in soundFiles) {
+            gameSounds[key] = new Audio(soundFiles[key]);
+            gameSounds[key].preload = 'auto';
+        }
 
-    if (gameSounds['crowd_shout']) {
-        gameSounds['crowd_shout'].loop = true;
+        if (gameSounds['crowd_shout']) {
+            gameSounds['crowd_shout'].loop = true;
+        }
+        
+        audioInitialized = true;
+        console.log("Звуковой движок успешно запущен в корневой папке!");
+    } catch (e) {
+        console.error("Ошибка инициализации звука:", e);
     }
-} catch (e) {
-    console.error(e);
 }
+
+// ФУНКЦИЯ ВОСПРОИЗВЕДЕНИЯ
 function playSound(type, volume = 1.0) {
     try {
         if (typeof soundEnabled !== 'undefined' && !soundEnabled) return;
         
+        // Пытаемся запустить аудио при каждом звуке на случай, если юзер только что тапнул
         initAudio(); 
 
         let soundKey = type;
@@ -286,28 +297,27 @@ function playSound(type, volume = 1.0) {
                 let playPromise = audio.play();
                 if (playPromise !== undefined) {
                     playPromise.catch(function(error) {
-                        console.log("Audio waiting for interaction");
+                        console.log("Audio waiting for user interaction");
                     });
                 }
             }
         }
     } catch (globalSoundError) {
-        console.error(globalSoundError);
+        console.error("Ошибка в playSound:", globalSoundError);
     }
 }
+
+// АКТИВАЦИЯ ЗВУКА ПО КЛИКУ И ТАПУ (Снятие блоков Chrome)
 function touchStarted() {
-    if (typeof initAudio === 'function') {
-        initAudio();
-    }
-    // Если в p5.js уже есть функция touchStarted, этот код просто сработает вместе с ней
+    initAudio();
+    if (gameSounds['click']) playSound('click', 0.1); // Пробный тихий пинг при первом таче
 }
 
 function mousePressed() {
-    if (typeof initAudio === 'function') {
-        initAudio();
-    }
+    initAudio();
+    if (gameSounds['click']) playSound('click', 0.1);
 }
-
+    
 function triggerVibrate(duration) {
     if (vibrationEnabled && navigator.vibrate) navigator.vibrate(duration);
 }
