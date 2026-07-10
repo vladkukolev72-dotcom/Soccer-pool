@@ -20,17 +20,14 @@
         -webkit-touch-callout: none;
         -webkit-user-select: none;
         user-select: none;
-        /* touch-action: none полностью блокирует жесты браузера (включая pull-to-refresh) */
         touch-action: none; 
-        position: fixed; /* Фиксирует экран, чтобы он не прыгал вверх-вниз */
+        position: fixed;
     }
     canvas {
         display: block;
-        /* Убираем жесткие 100vw/100vh, чтобы холст не искажался */
         margin: 0 auto; 
     }
 
-    /* Заглушка для блокировки поворота экрана */
     #orientation-blocker {
         display: none;
         position: fixed;
@@ -38,16 +35,15 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background-color: #1a1a1a; /* Под цвет твоей игры */
+        background-color: #1a1a1a;
         color: #ffffff;
-        z-index: 99999; /* Поверх всей игры */
+        z-index: 99999;
         text-align: center;
         font-family: sans-serif;
         padding: 20px;
         box-sizing: border-box;
     }
 
-    /* Стили для текста внутри заглушки */
     #orientation-blocker .content {
         position: absolute;
         top: 50%;
@@ -67,7 +63,6 @@
         color: #aaaaaa;
     }
 
-    /* Включаем заглушку только в горизонтальном режиме */
     @media (orientation: landscape) {
         #orientation-blocker {
             display: block;
@@ -102,7 +97,6 @@ let isVsBot = false;
 let botDifficulty = 'СРЕДНЕ'; 
 let aiTimer = 0; 
 
-// --- НАСТРОЙКИ КАМПАНИИ ---
 let isCampaign = false;
 let currentLevel = 0;
 const CAMPAIGN_LEVELS = [
@@ -163,12 +157,10 @@ let lastSelectedChipPos = null;
 
 let devSkipClickZone = { x: 0, y: 0, w: 0, h: 0 };
 
-// Кнопки интерфейса
 let playBtn, tournamentMenuBtn, campaignBtn, settingsMenuBtn, pvpBtn, pveBtn, easyBtn, medBtn, hardBtn, backBtn;
 let helpBtnZone = { x: 0, y: 0, size: 36 };
 let showTutorialOverlay = false;
 
-// Кнопки турнира
 let tour18Btn, tour14Btn, tour12Btn;
 let tourStartMatchBtn, tourBackMenuBtn;
 
@@ -208,7 +200,6 @@ const TOUCH_COOLDOWN = 250;
 
 let audioCtx = null;
 
-// --- ПЕРЕМЕННЫЕ ДЛЯ РЕЖИМА ТУРНИРА ---
 let isTournament = false;
 let tourTeams = [];
 let tourRounds = []; 
@@ -236,19 +227,18 @@ const TOURNAMENT_PRESET_TEAMS = [
 
 const gameSounds = {};
 let audioInitialized = false;
+
 function playMenuSound() {
     if (gameSounds['click']) {
-        gameSounds['click'].volume = 0.5; // Сделаем чуть тише, чтобы не оглушало
+        gameSounds['click'].volume = 0.3;
         gameSounds['click'].currentTime = 0;
         gameSounds['click'].play().catch(e => console.log("Menu sound error"));
     }
 }
-// ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ (Её не хватало, из-за этого Eruda ругалась!)
+
 function initAudio() {
-    if (audioInitialized) return; // Если уже запустили, второй раз не пересоздаем
-    
+    if (audioInitialized) return; 
     try {
-        // Пути прямые, так как файлы лежат в корне рядом с index.html
         const soundFiles = {
             'ball_hit':    'ball_hit.mp3',
             'ball_wall':   'ball_wall.mp3',
@@ -267,73 +257,41 @@ function initAudio() {
         if (gameSounds['crowd_shout']) {
             gameSounds['crowd_shout'].loop = true;
         }
-        
         audioInitialized = true;
-        console.log("Звуковой движок успешно запущен в корневой папке!");
+        console.log("Звуковой движок запущен!");
     } catch (e) {
         console.error("Ошибка инициализации звука:", e);
     }
 }
 
-// ФУНКЦИЯ ВОСПРОИЗВЕДЕНИЯ
 function playSound(type, volume = 1.0) {
     try {
         if (typeof soundEnabled !== 'undefined' && !soundEnabled) return;
-        
         initAudio(); 
 
         let soundKey = type;
-
-        // Умное разделение звуков:
-        if (type === 'hit') {
-            soundKey = 'ball_hit';
-        } else if (type === 'wall') {
-            soundKey = 'ball_wall';
-        } else if (type === 'chips_hit' || type === 'chip_hit') {
-            soundKey = 'chips_hit';
-        } else if (type === 'chip_wall') {
-            soundKey = 'chip_wall';
-        }
+        if (type === 'hit') soundKey = 'ball_hit';
+        else if (type === 'wall') soundKey = 'ball_wall';
+        else if (type === 'chips_hit' || type === 'chip_hit') soundKey = 'chips_hit';
+        else if (type === 'chip_wall') soundKey = 'chip_wall';
 
         if (gameSounds && gameSounds[soundKey]) {
             let audio = gameSounds[soundKey];
-            
             if (audio && typeof audio.play === 'function') {
-                // ОГРАНИЧЕНИЕ ГРОМКОСТИ: если физика передала больше 1, ставим ровно 1.0
-                let safeVolume = volume;
-                if (safeVolume > 1.0) safeVolume = 1.0;
-                if (safeVolume < 0.0) safeVolume = 0.0;
-                
+                let safeVolume = constrain(volume, 0.0, 1.0);
                 audio.volume = safeVolume;
                 audio.currentTime = 0;
-                
-                let playPromise = audio.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(function(error) {
-                        console.log("Audio waiting for user interaction");
-                    });
-                }
+                audio.play().catch(e => console.log("Audio waiting context"));
             }
         }
-    } catch (globalSoundError) {
-        console.error("Ошибка в playSound:", globalSoundError);
+    } catch (err) {
+        console.error(err);
     }
 }
 
-// АКТИВАЦИЯ ЗВУКА ПО КЛИКУ И ТАПУ (Снятие блоков Chrome)
-function touchStarted() {
-    initAudio();
-    // Больше никаких звуков тут!
-    if (window.getAudioContext && window.getAudioContext().state === 'suspended') {
-        window.getAudioContext().resume();
-    }
-}
-
-function mousePressed() {
-    initAudio();
-    // Больше никаких звуков тут!
-    if (window.getAudioContext && window.getAudioContext().state === 'suspended') {
-        window.getAudioContext().resume();
+function triggerVibrate(ms) {
+    if (vibrationEnabled && window.navigator && window.navigator.vibrate) {
+        window.navigator.vibrate(ms);
     }
 }
 
@@ -361,22 +319,16 @@ function updateLevelModifiers() {
     if (!lvl) return;
 
     for (let i = 0; i < (lvl.sandCount || 0); i++) {
-        let randX = fieldX + random(60, fieldW - 140);
-        let randY = fieldY + random(60, fieldH - 140);
         activeModifiers.push({
-            x: randX, y: randY, w: random(70, 100), h: random(70, 100),
-            type: 'mud', color: 'rgba(139, 69, 19, 0.32)', label: '░',
-            forceX: 0, forceY: 0
+            x: fieldX + random(60, fieldW - 140), y: fieldY + random(60, fieldH - 140), w: random(70, 100), h: random(70, 100),
+            type: 'mud', color: 'rgba(139, 69, 19, 0.32)', label: '░', forceX: 0, forceY: 0
         });
     }
 
     for (let i = 0; i < (lvl.iceCount || 0); i++) {
-        let randX = fieldX + random(60, fieldW - 140);
-        let randY = fieldY + random(60, fieldH - 140);
         activeModifiers.push({
-            x: randX, y: randY, w: random(80, 110), h: random(80, 110),
-            type: 'ice', color: 'rgba(0, 255, 255, 0.25)', label: '❄',
-            forceX: 0, forceY: 0
+            x: fieldX + random(60, fieldW - 140), y: fieldY + random(60, fieldH - 140), w: random(80, 110), h: random(80, 110),
+            type: 'ice', color: 'rgba(0, 255, 255, 0.25)', label: '❄', forceX: 0, forceY: 0
         });
     }
 
@@ -384,18 +336,14 @@ function updateLevelModifiers() {
     let windColor = isRedWind ? 'rgba(255, 50, 50, 0.35)' : 'rgba(0, 191, 255, 0.32)';
     
     for (let i = 0; i < (lvl.windCount || 0); i++) {
-        let randX = fieldX + random(60, fieldW - 140);
-        let randY = fieldY + random(60, fieldH - 140);
         let angle = random(TWO_PI);
         let fx = cos(angle) * (isRedWind ? 0.28 : 0.16); 
         let fy = sin(angle) * (isRedWind ? 0.28 : 0.16);
-        let lbl = '→';
-        if (abs(fx) > abs(fy)) { lbl = fx > 0 ? '→' : '←'; } else { lbl = fy > 0 ? '↓' : '↑'; }
+        let lbl = abs(fx) > abs(fy) ? (fx > 0 ? '→' : '←') : (fy > 0 ? '↓' : '↑');
 
         activeModifiers.push({
-            x: randX, y: randY, w: random(80, 110), h: random(80, 110),
-            type: 'wind', color: windColor, label: lbl,
-            forceX: fx, forceY: fy
+            x: fieldX + random(60, fieldW - 140), y: fieldY + random(60, fieldH - 140), w: random(80, 110), h: random(80, 110),
+            type: 'wind', color: windColor, label: lbl, forceX: fx, forceY: fy
         });
     }
 }
@@ -404,12 +352,9 @@ function drawModifiers() {
     if (!isCampaign || activeModifiers.length === 0 || isEditingTactic) return;
     push();
     activeModifiers.forEach(zone => {
-        noStroke();
-        fill(zone.color);
-        rect(zone.x, zone.y, zone.w, zone.h, 10);
+        noStroke(); fill(zone.color); rect(zone.x, zone.y, zone.w, zone.h, 10);
         if (zone.color.includes('255, 50')) fill(255, 0, 0, 180); else fill(255, 130);
-        textSize(24); textAlign(CENTER, CENTER);
-        text(zone.label, zone.x + zone.w / 2, zone.y + zone.h / 2);
+        textSize(24); textAlign(CENTER, CENTER); text(zone.label, zone.x + zone.w / 2, zone.y + zone.h / 2);
     });
     pop();
 }
@@ -435,8 +380,7 @@ class Entity {
 
         if (isCampaign) {
             activeModifiers.forEach(zone => {
-                if (this.p.x > zone.x && this.p.x < zone.x + zone.w &&
-                    this.p.y > zone.y && this.p.y < zone.y + zone.h) {
+                if (this.p.x > zone.x && this.p.x < zone.x + zone.w && this.p.y > zone.y && this.p.y < zone.y + zone.h) {
                     if (zone.type === 'mud') currentFriction = FRICTION * 0.90; 
                     if (zone.type === 'ice') currentFriction = 0.998; 
                     if (zone.type === 'wind') { this.v.x += zone.forceX; this.v.y += zone.forceY; }
@@ -536,7 +480,6 @@ class Entity {
         let lvl = isCampaign ? CAMPAIGN_LEVELS[currentLevel] : null;
 
         if (this.isBall) {
-            // ОБНОВЛЕНИЕ: Тень для мяча
             fill(0, map(currentEntityAlpha, 0, 255, 0, 75)); noStroke();
             ellipse(this.p.x + 3, this.p.y + 4, this.d); 
 
@@ -554,20 +497,18 @@ class Entity {
             else { fill(255); stroke(40); }
             strokeWeight(3); ellipse(0, 0, this.d); 
             
-            // ОБНОВЛЕНИЕ: Две боковые точки сделаны жирнее (увеличено основание)
             let dotSize = (this.d / 2) * 0.9; 
             let offset = (this.d / 2) - dotSize / 2 - 0.5; 
             if (lvl && (lvl.mod === 'fast_ball' || lvl.mod === 'chaos')) fill('#550000'); else fill(40); 
             noStroke(); ellipse(-offset, 0, dotSize); ellipse(offset, 0, dotSize);  
             pop();
         } else {
-            // ОБНОВЛЕНИЕ: Тень для игроков
             fill(0, map(currentEntityAlpha, 0, 255, 0, 80)); noStroke();
             ellipse(this.p.x + 4, this.p.y + 5, this.d);
 
             if (this.color === currentTurn && orbitAlpha > 0.5 && !isEditingTactic && !isResettingPositions && !isEvacuating && !matchWinner && !isGoalCelebrating) {
-                stroke(0, map(orbitAlpha, 0, 255, 0, currentEntityAlpha));
-                strokeWeight(3.5); noFill();
+                stroke(this.color);
+                strokeWeight(2.5); noFill();
                 let numSegments = 6; let segmentLength = (TWO_PI / numSegments) * 0.45; 
                 push(); translate(this.p.x, this.p.y); rotate(orbitAngle * 0.5); 
                 for (let i = 0; i < numSegments; i++) {
@@ -579,7 +520,6 @@ class Entity {
 
             stroke(0, currentEntityAlpha); strokeWeight(4.25);
             fill(this.color);
-            
             ellipse(this.p.x, this.p.y, this.d);
             fill(255, currentEntityAlpha); noStroke();
             drawStar(this.p.x, this.p.y, this.d * 0.15, this.d * 0.32, 5);
@@ -591,30 +531,28 @@ class Entity {
         if (!this.isBall || isResettingPositions || isEvacuating || isEditingTactic || matchWinner || isGoalCelebrating) return false;
 
         if (this.p.y < fieldY - 3) { 
-            let scoringTeam = PLAYER1_COLOR; let nextTurnTeam = PLAYER2_COLOR; 
+            let scoringTeam = PLAYER2_COLOR; let nextTurnTeam = PLAYER1_COLOR; 
             if (lastTouchColor === PLAYER2_COLOR) { goalOverlayText = 'АВТОГОЛ!'; scoringTeam = PLAYER1_COLOR; nextTurnTeam = PLAYER2_COLOR; p1Goals++; } 
-            else { goalOverlayText = 'ГОЛ!'; p1Goals++; }
+            else { goalOverlayText = 'ГОЛ СИНИХ!'; p2Goals++; }
             
             triggerVibrate(60); 
-            createGoalBurstParticles(this.p.x, fieldY, scoringTeam, true);
+            createGoalBurstParticles(this.p.x, fieldY, PLAYER2_COLOR, true);
             
-            if (p1Goals >= maxGoalsToWin) { triggerWin(isTournament ? tourRounds[currentRoundIdx][currentMatchIdx].t1.name : 'КРАСНЫЕ'); return true; }
-            
+            if (p2Goals >= maxGoalsToWin) { triggerWin(isTournament ? tourRounds[currentRoundIdx][currentMatchIdx].t2.name : 'СИНИЕ'); return true; }
             playSound('goal');
             startGoalCelebrationPhase(scoringTeam, nextTurnTeam);
             return true; 
         } 
 
         if (this.p.y > fieldY + fieldH + 3) { 
-            let scoringTeam = PLAYER2_COLOR; let nextTurnTeam = PLAYER1_COLOR; 
+            let scoringTeam = PLAYER1_COLOR; let nextTurnTeam = PLAYER2_COLOR; 
             if (lastTouchColor === PLAYER1_COLOR) { goalOverlayText = 'АВТОГОЛ!'; scoringTeam = PLAYER2_COLOR; nextTurnTeam = PLAYER1_COLOR; p2Goals++; } 
-            else { goalOverlayText = 'ГОЛ!'; p2Goals++; }
+            else { goalOverlayText = 'ГОЛ КРАСНЫХ!'; p1Goals++; }
             
             triggerVibrate(60); 
-            createGoalBurstParticles(this.p.x, fieldY + fieldH, scoringTeam, false);
+            createGoalBurstParticles(this.p.x, fieldY + fieldH, PLAYER1_COLOR, false);
             
-            if (p2Goals >= maxGoalsToWin) { triggerWin(isTournament ? tourRounds[currentRoundIdx][currentMatchIdx].t2.name : 'СИНИЕ'); return true; }
-            
+            if (p1Goals >= maxGoalsToWin) { triggerWin(isTournament ? tourRounds[currentRoundIdx][currentMatchIdx].t1.name : 'КРАСНЫЕ'); return true; }
             playSound('goal');
             startGoalCelebrationPhase(scoringTeam, nextTurnTeam);
             return true; 
@@ -641,9 +579,7 @@ class GoalBurstParticle {
         this.p = createVector(x, y);
         let angle = isTopGoal ? random(0.2, PI - 0.2) : random(-PI + 0.2, -0.2);
         this.v = createVector(cos(angle), sin(angle)).mult(random(3, 7));
-        this.alpha = 255;
-        this.color = color;
-        this.size = random(4, 6);
+        this.alpha = 255; this.color = color; this.size = random(4, 6);
     }
     update() { this.p.add(this.v); this.v.mult(0.96); this.alpha -= 5; }
     display() {
@@ -659,7 +595,7 @@ function createSparks(x, y, color, intensity) {
 }
 
 function createGoalBurstParticles(x, y, teamColor, isTopGoal) {
-    for (let i = 0; i < 15; i++) { 
+    for (let i = 0; i < 25; i++) { 
         particles.push(new GoalBurstParticle(x, y, teamColor, isTopGoal));
     }
 }
@@ -686,7 +622,6 @@ function triggerWin(winnerName) {
         e.v.set(0, 0);
         if (!e.isBall && e.color === loseColor) e.color = '#555555'; 
     }
-    playSound('win_fanfare');
     triggerVibrate(80);
 }
 
@@ -718,9 +653,9 @@ function setup() {
 }
 
 function calculateFieldMetrics() {
-    fieldH = height * 0.82; fieldW = fieldH * 0.61; 
+    fieldH = height * 0.76; fieldW = fieldH * 0.61; 
     if (fieldW > width * 0.92) { fieldW = width * 0.92; fieldH = fieldW * (1/0.61); }
-    fieldX = (width - fieldW) / 2; fieldY = (height - fieldH) / 2 + 10;
+    fieldX = (width - fieldW) / 2; fieldY = (height - fieldH) / 2 + 15;
     
     goalW = fieldW * 0.42;
     defaultGoalW = goalW; 
@@ -738,26 +673,25 @@ function calculateFieldMetrics() {
     easyBtn = { x: width/2 - bw/2, y: height * 0.38, w: bw, h: bh };
     medBtn = { x: width/2 - bw/2, y: height * 0.47, w: bw, h: bh };
     hardBtn = { x: width/2 - bw/2, y: height * 0.56, w: bw, h: bh };
-    backBtn = { x: width/2 - 70, y: height * 0.86, w: 140, h: 36 };
+    backBtn = { x: width/2 - 70, y: height * 0.88, w: 140, h: 36 };
     
     tour18Btn = { x: width/2 - bw/2, y: height * 0.40, w: bw, h: bh };
     tour14Btn = { x: width/2 - bw/2, y: height * 0.48, w: bw, h: bh };
     tour12Btn = { x: width/2 - bw/2, y: height * 0.56, w: bw, h: bh };
 
-    // ОБНОВЛЕНИЕ: Переносим кнопки турнирной сетки значительно ниже к нижнему краю
-    tourStartMatchBtn = { x: width/2 - 110, y: height * 0.86, w: 220, h: bh + 4 };
-    tourBackMenuBtn = { x: width/2 - 80, y: height * 0.93, w: 160, h: 32 };
+    tourStartMatchBtn = { x: width/2 - 110, y: height * 0.84, w: 220, h: bh + 4 };
+    tourBackMenuBtn = { x: width/2 - 80, y: height * 0.92, w: 160, h: 32 };
 
     soundToggleBtn = { x: width/2 - bw/2, y: height * 0.15, w: bw, h: 32 };
-    vibroToggleBtn = { x: width/2 - bw/2, y: height * 0.21, w: bw, h: 32 };
+    vibroToggleBtn = { x: width/2 - bw/2, y: height * 0.22, w: bw, h: 32 };
 
-    sliderX = width / 2 - sliderW / 2; sliderY = height * 0.32;
-    p2Y = height * 0.46; 
+    sliderX = width / 2 - sliderW / 2; sliderY = height * 0.34;
+    p2Y = height * 0.48; 
     p2LeftBtn = { x: width / 2 - 120, y: p2Y, w: 32, h: 32 }; 
     p2RightBtn = { x: width / 2 + 88, y: p2Y, w: 32, h: 32 };
     p2SetupBtn = { x: width / 2 - 60, y: p2Y + 38, w: 120, h: 24 };
 
-    p1Y = height * 0.64; 
+    p1Y = height * 0.68; 
     p1LeftBtn = { x: width / 2 - 120, y: p1Y, w: 32, h: 32 }; 
     p1RightBtn = { x: width / 2 + 88, y: p1Y, w: 32, h: 32 };
     p1SetupBtn = { x: width / 2 - 60, y: p1Y + 38, w: 120, h: 24 };
@@ -883,9 +817,7 @@ function drawTournamentBracket() {
     fill('#ff9800'); textSize(14);
     text(`${rName} • МАТЧ ${currentMatchIdx + 1} ИЗ ${currentRound.length}`, width/2, height * 0.09);
 
-    // Отрисовка карточек матчей
     let startY = height * 0.14;
-    // Корректируем высоту карточек в зависимости от их количества, чтобы в 1/8 всё влезло
     let cardW = min(width * 0.85, 290);
     let cardH = currentRound.length > 4 ? 34 : 48; 
     let spacing = currentRound.length > 4 ? 6 : 12;
@@ -921,14 +853,12 @@ function drawTournamentBracket() {
         }
     }
 
-    // Кнопка запуска текущего матча (измененные координаты в setup гарантируют безопасность клика)
     let hStart = mouseX > tourStartMatchBtn.x && mouseX < tourStartMatchBtn.x + tourStartMatchBtn.w && mouseY > tourStartMatchBtn.y && mouseY < tourStartMatchBtn.y + tourStartMatchBtn.h;
     fill(hStart ? '#4caf50' : '#43a047'); noStroke();
     rect(tourStartMatchBtn.x, tourStartMatchBtn.y, tourStartMatchBtn.w, tourStartMatchBtn.h, 6);
     fill(255); textAlign(CENTER, CENTER); textStyle(BOLD); textSize(14);
     text("НАЧАТЬ МАТЧ", width/2, tourStartMatchBtn.y + tourStartMatchBtn.h/2);
 
-    // Кнопка возврата в меню
     let hBack = mouseX > tourBackMenuBtn.x && mouseX < tourBackMenuBtn.x + tourBackMenuBtn.w && mouseY > tourBackMenuBtn.y && mouseY < tourBackMenuBtn.y + tourBackMenuBtn.h;
     noFill(); stroke(80); rect(tourBackMenuBtn.x, tourBackMenuBtn.y, tourBackMenuBtn.w, tourBackMenuBtn.h, 4);
     fill(hBack ? 255 : 140); noStroke(); textStyle(NORMAL); textSize(12);
@@ -948,13 +878,7 @@ function initTournament(teamCount) {
 
     let firstRoundMatches = [];
     for (let i = 0; i < teamCount; i += 2) {
-        firstRoundMatches.push({
-            t1: tourTeams[i],
-            t2: tourTeams[i+1],
-            score1: 0,
-            score2: 0,
-            played: false
-        });
+        firstRoundMatches.push({ t1: tourTeams[i], t2: tourTeams[i+1], score1: 0, score2: 0, played: false });
     }
     tourRounds.push(firstRoundMatches);
     gameState = 'TOUR_BRACKET';
@@ -1009,22 +933,12 @@ function drawSettingsPanel() {
     noStroke(); fill(160); text("<", p2LeftBtn.x + p2LeftBtn.w/2, p2LeftBtn.y + p2LeftBtn.h/2); text(">", p2RightBtn.x + p2RightBtn.w/2, p2RightBtn.y + p2RightBtn.h/2); 
     let t2Name = TACTICS[p2TacticIdx]; if (t2Name === 'СВОЯ' && p2Saved) fill('#4caf50'); else fill('#00bcd4');
     textSize(15); textStyle(BOLD); text(t2Name, width / 2, p2LeftBtn.y + p2LeftBtn.h/2);
-    if (t2Name === 'СВОЯ') {
-        let hSetup = (mouseX > p2SetupBtn.x && mouseX < p2SetupBtn.x + p2SetupBtn.w && mouseY > p2SetupBtn.y && mouseY < p2SetupBtn.y + p2SetupBtn.h);
-        noFill(); stroke(hSetup ? 255 : 80); rect(p2SetupBtn.x, p2SetupBtn.y, p2SetupBtn.w, p2SetupBtn.h, 4); 
-        noStroke(); fill(hSetup ? 255 : 150); textStyle(NORMAL); textSize(11); text("ИЗМЕНИТЬ", width/2, p2SetupBtn.y + p2SetupBtn.h/2 + 1);
-    }
 
     fill(140); textStyle(NORMAL); textSize(13); text("Схема КРАСНЫХ:", width / 2, p1LeftBtn.y - 12); 
     noFill(); stroke(50); rect(p1LeftBtn.x, p1LeftBtn.y, p1LeftBtn.w, p1LeftBtn.h, 4); rect(p1RightBtn.x, p1RightBtn.y, p1RightBtn.w, p1RightBtn.h, 4); 
     noStroke(); fill(160); text("<", p1LeftBtn.x + p1LeftBtn.w/2, p1LeftBtn.y + p1LeftBtn.h/2); text(">", p1RightBtn.x + p1RightBtn.w/2, p1RightBtn.y + p1RightBtn.h/2); 
     let t1Name = TACTICS[p1TacticIdx]; if (t1Name === 'СВОЯ' && p1Saved) fill('#4caf50'); else fill('#f44336');
     textSize(15); textStyle(BOLD); text(t1Name, width / 2, p1LeftBtn.y + p1LeftBtn.h/2);
-    if (t1Name === 'СВОЯ') {
-        let hSetup = (mouseX > p1SetupBtn.x && mouseX < p1SetupBtn.x + p1SetupBtn.w && mouseY > p1SetupBtn.y && mouseY < p1SetupBtn.y + p1SetupBtn.h);
-        noFill(); stroke(hSetup ? 255 : 80); rect(p1SetupBtn.x, p1SetupBtn.y, p1SetupBtn.w, p1SetupBtn.h, 4); 
-        noStroke(); fill(hSetup ? 255 : 150); textStyle(NORMAL); textSize(11); text("ИЗМЕНИТЬ", width/2, p1SetupBtn.y + p1SetupBtn.h/2 + 1);
-    }
     
     let hB = (mouseX > backBtn.x && mouseX < backBtn.x + backBtn.w && mouseY > backBtn.y && mouseY < backBtn.y + backBtn.h);
     noFill(); stroke(hB ? 255 : 80); rect(backBtn.x, backBtn.y, backBtn.w, backBtn.h, 6); 
@@ -1043,7 +957,7 @@ function handleGameLogic() {
         goalCelebrationTimer--;
         if (goalCelebrationTimer <= 0) {
             isGoalCelebrating = false;
-            if (isVsBot && !isCampaign && !isTournament && TACTICS[p2TacticIdx] !== 'СВОЯ') p2TacticIdx = floor(random(0, 4));
+            if (isVsBot && !isCampaign && !isTournament) p2TacticIdx = floor(random(0, 4));
             animateFieldToTactic(pendingNextTurnTeam); 
         }
     }
@@ -1082,10 +996,6 @@ function handleGameLogic() {
     } else if (isGoalCelebrating && goalScoringTeamColor) {
         let targetGoalBg = (goalScoringTeamColor === PLAYER1_COLOR) ? color('#3a1515') : color('#15363a');
         animatedBgColor = lerpColor(animatedBgColor, targetGoalBg, 0.15);
-    } else if (isEditingTactic) {
-        animatedBgColor = color('#1e2528'); 
-    } else if (moving || isResettingPositions || isEvacuating) {
-        animatedBgColor = lerpColor(animatedBgColor, color(ORIGINAL_BG), 0.04);
     } else {
         let turnBg = (currentTurn === PLAYER1_COLOR) ? color(BG_P1) : color(BG_P2);
         animatedBgColor = lerpColor(animatedBgColor, turnBg, 0.04);
@@ -1110,7 +1020,7 @@ function handleGameLogic() {
         aiTimer++; if (aiTimer > 75) { executeBotTurn(); aiTimer = 0; }
     }
 
-    if (selectedChip && mouseIsPressed && !isEditingTactic && !matchWinner && !isGoalCelebrating) { targetAimAlpha = 50; lastSelectedChipPos = selectedChip.p.copy(); } 
+    if (selectedChip && mouseIsPressed && !isEditingTactic && !matchWinner && !isGoalCelebrating) { targetAimAlpha = 90; lastSelectedChipPos = selectedChip.p.copy(); } 
     else { targetAimAlpha = 0; }
     aimAlpha = lerp(aimAlpha, targetAimAlpha, 0.12); 
     if (aimAlpha > 0.5 && lastSelectedChipPos) drawOriginalPull(lastSelectedChipPos);
@@ -1125,7 +1035,7 @@ function handleGameLogic() {
         particles[i].update(); if (particles[i].alpha <= 0) particles.splice(i, 1); else particles[i].display();
     }
     
-    if (isEditingTactic) { drawSaveButtonsOverlay(); } else { drawFieldScore(); }
+    drawFieldScore();
     pop(); 
 
     if (isCampaign && gameState === 'GAME' && !matchWinner) {
@@ -1147,6 +1057,174 @@ function handleGameLogic() {
     }
 }
 
+function drawVisualLayout() {
+    stroke(BORDER_COLOR); strokeWeight(boundarySize); noFill();
+    rect(fieldX, fieldY, fieldW, fieldH, 4);
+
+    let step = fieldH / 14;
+    noStroke();
+    for (let i = 0; i < 14; i++) {
+        fill(i % 2 === 0 ? FIELD_COLOR_1 : FIELD_COLOR_2);
+        rect(fieldX + 2, fieldY + i * step + 2, fieldW - 4, step);
+    }
+
+    stroke('rgba(255,255,255,0.4)'); strokeWeight(3); noFill();
+    line(fieldX, fieldY + fieldH/2, fieldX + fieldW, fieldY + fieldH/2);
+    ellipse(fieldX + fieldW/2, fieldY + fieldH/2, fieldW * 0.3);
+    fill('rgba(255,255,255,0.6)'); ellipse(fieldX + fieldW/2, fieldY + fieldH/2, 8);
+
+    let goalX = fieldX + fieldW/2;
+    stroke(PLAYER2_COLOR); strokeWeight(4); noFill();
+    rect(goalX - goalW/2, fieldY - goalH, goalW, goalH, 4);
+    stroke(PLAYER1_COLOR);
+    rect(goalX - goalW/2, fieldY + fieldH, goalW, goalH, 4);
+}
+
+function drawFieldScore() {
+    push(); textAlign(CENTER, CENTER); textStyle(BOLD); textSize(18);
+    fill(PLAYER2_COLOR); text(p2Goals, fieldX + 30, fieldY - 20);
+    fill(PLAYER1_COLOR); text(p1Goals, fieldX + 30, fieldY + fieldH + 20);
+    fill(255, 150); textSize(11); textStyle(NORMAL);
+    text("МЕНЮ", fieldX + fieldW - 30, fieldY - 20);
+    pop();
+}
+
+function drawOriginalPull(chipPos) {
+    push();
+    let mouseVec = createVector(mouseX, mouseY);
+    let delta = p5.Vector.sub(chipPos, mouseVec);
+    let distMag = delta.mag();
+    if (distMag > 15) {
+        let maxPull = 120;
+        if (distMag > maxPull) delta.setMag(maxPull);
+        
+        let targetPoint = p5.Vector.add(chipPos, delta);
+        stroke(currentTurn); strokeWeight(3);
+        line(chipPos.x, chipPos.y, targetPoint.x, targetPoint.y);
+        
+        fill(currentTurn); noStroke();
+        ellipse(targetPoint.x, targetPoint.y, 8);
+    }
+    pop();
+}
+
+function drawGoalOverlay() {
+    push(); fill('rgba(0,0,0,0.5)'); rect(0, 0, width, height);
+    textAlign(CENTER, CENTER); textStyle(BOLD); textSize(50); fill(255);
+    text(goalOverlayText, width/2, height/2); pop();
+}
+
+function drawWinOverlay() {
+    push(); fill('rgba(0,0,0,0.7)'); rect(0, 0, width, height);
+    textAlign(CENTER, CENTER); textStyle(BOLD); textSize(32); fill('#ff9800');
+    text("ПОБЕДА!", width/2, height/2 - 30);
+    textSize(22); fill(255); text(matchWinner, width/2, height/2 + 20); pop();
+}
+
+function checkCollisions() {
+    for (let i = 0; i < entities.length; i++) {
+        for (let j = i + 1; j < entities.length; j++) {
+            let e1 = entities[i]; let e2 = entities[j];
+            let d = dist(e1.p.x, e1.p.y, e2.p.x, e2.p.y);
+            let minDist = (e1.d + e2.d) / 2;
+            
+            if (d < minDist) {
+                let overlap = minDist - d;
+                let norm = p5.Vector.sub(e2.p, e1.p).normalize();
+                
+                e1.p.sub(p5.Vector.mult(norm, overlap * 0.5));
+                e2.p.add(p5.Vector.mult(norm, overlap * 0.5));
+
+                let kx = e1.v.x - e2.v.x; let ky = e1.v.y - e2.v.y;
+                let p = 2 * (norm.x * kx + norm.y * ky) / (e1.mass + e2.mass);
+
+                e1.v.x -= p * e2.mass * norm.x; e1.v.y -= p * e2.mass * norm.y;
+                e2.v.x += p * e1.mass * norm.x; e2.v.y += p * e1.mass * norm.y;
+
+                let relVel = Math.abs(e1.v.mag() - e2.v.mag());
+                if (e1.isBall || e2.isBall) {
+                    playSound('hit', relVel / 3);
+                } else {
+                    playSound('chips_hit', relVel / 4);
+                }
+                triggerVibrate(20);
+            }
+        }
+    }
+}
+
+function startGameMatch() {
+    p1Goals = 0; p2Goals = 0;
+    resetFieldDirect(PLAYER1_COLOR);
+    gameState = 'GAME';
+}
+
+function resetFieldDirect(startingTurn) {
+    entities = [];
+    currentTurn = startingTurn;
+    turnSwitchedThisRoll = false;
+    ballTrail = [];
+
+    let midX = fieldX + fieldW / 2;
+    entities.push(new Entity(midX, fieldY + fieldH / 2, 22, '#ffffff', true));
+
+    let t1Type = TACTICS[p1TacticIdx];
+    let p1Coords = getTacticalPositions(t1Type, true);
+    p1Coords.forEach(pos => entities.push(new Entity(pos.x, pos.y, 28, PLAYER1_COLOR, false)));
+
+    let t2Type = TACTICS[p2TacticIdx];
+    let p2Coords = getTacticalPositions(t2Type, false);
+    p2Coords.forEach(pos => entities.push(new Entity(pos.x, pos.y, 28, PLAYER2_COLOR, false)));
+
+    globalSpawnAlpha = 0;
+}
+
+function animateFieldToTactic(nextTurnTeam) {
+    currentTurn = nextTurnTeam;
+    let midX = fieldX + fieldW / 2;
+    
+    targetPositions = [];
+    targetPositions.push(createVector(midX, fieldY + fieldH / 2));
+    entities[0].v.set(0, 0);
+
+    let p1Coords = getTacticalPositions(TACTICS[p1TacticIdx], true);
+    p1Coords.forEach(pos => targetPositions.push(createVector(pos.x, pos.y)));
+
+    let p2Coords = getTacticalPositions(TACTICS[p2TacticIdx], false);
+    p2Coords.forEach(pos => targetPositions.push(createVector(pos.x, pos.y)));
+
+    for (let e of entities) e.v.set(0, 0);
+    isResettingPositions = true;
+}
+
+function getTacticalPositions(type, isBottomTeam) {
+    let coords = [];
+    let midX = fieldX + fieldW / 2;
+    let baseSign = isBottomTeam ? 1 : -1;
+    let centerY = fieldY + fieldH / 2;
+
+    if (type === 'АТАКА') {
+        coords.push({ x: midX, y: centerY + baseSign * fieldH * 0.12 });
+        coords.push({ x: midX - fieldW * 0.22, y: centerY + baseSign * fieldH * 0.18 });
+        coords.push({ x: midX + fieldW * 0.22, y: centerY + baseSign * fieldH * 0.18 });
+        coords.push({ x: midX - fieldW * 0.32, y: centerY + baseSign * fieldH * 0.32 });
+        coords.push({ x: midX + fieldW * 0.32, y: centerY + baseSign * fieldH * 0.32 });
+    } else if (type === 'ЗАЩИТА') {
+        coords.push({ x: midX, y: centerY + baseSign * fieldH * 0.42 });
+        coords.push({ x: midX - fieldW * 0.18, y: centerY + baseSign * fieldH * 0.38 });
+        coords.push({ x: midX + fieldW * 0.18, y: centerY + baseSign * fieldH * 0.38 });
+        coords.push({ x: midX - fieldW * 0.28, y: centerY + baseSign * fieldH * 0.25 });
+        coords.push({ x: midX + fieldW * 0.28, y: centerY + baseSign * fieldH * 0.25 });
+    } else { // БАЛАНС / РАНДОМ По умолчанию
+        coords.push({ x: midX, y: centerY + baseSign * fieldH * 0.38 });
+        coords.push({ x: midX - fieldW * 0.25, y: centerY + baseSign * fieldH * 0.26 });
+        coords.push({ x: midX + fieldW * 0.25, y: centerY + baseSign * fieldH * 0.26 });
+        coords.push({ x: midX - fieldW * 0.15, y: centerY + baseSign * fieldH * 0.12 });
+        coords.push({ x: midX + fieldW * 0.15, y: centerY + baseSign * fieldH * 0.12 });
+    }
+    return coords;
+}
+
 function handleMatchEnd(winnerName) {
     ballTrail = []; isEditingTactic = false; matchWinner = null; isGoalCelebrating = false;
     fieldScale = 1.0; targetFieldScale = 1.0; globalSpawnAlpha = 255; goalW = defaultGoalW;   
@@ -1160,19 +1238,14 @@ function handleMatchEnd(winnerName) {
     else if (isTournament) {
         let currentRound = tourRounds[currentRoundIdx];
         let match = currentRound[currentMatchIdx];
-        match.played = true;
-        match.score1 = p1Goals;
-        match.score2 = p2Goals;
-
+        match.played = true; match.score1 = p1Goals; match.score2 = p2Goals;
         let winnerTeam = (p1Goals > p2Goals) ? match.t1 : match.t2;
 
         currentMatchIdx++;
         if (currentMatchIdx >= currentRound.length) {
             if (currentRound.length === 1) {
-                alert(`ЧЕМПИОНАТ ЗАВЕРШЕН!\nПобедитель гран-при: ${winnerTeam.name}!`);
-                isTournament = false;
-                gameState = 'MENU';
-                entities = [];
+                alert(`ЧЕМПИОНАТ ЗАВЕРШЕН!\nПобедитель: ${winnerTeam.name}!`);
+                isTournament = false; gameState = 'MENU'; entities = [];
             } else {
                 let nextRoundMatches = [];
                 for (let i = 0; i < currentRound.length; i += 2) {
@@ -1180,16 +1253,11 @@ function handleMatchEnd(winnerName) {
                     let w2 = (currentRound[i+1].score1 > currentRound[i+1].score2) ? currentRound[i+1].t1 : currentRound[i+1].t2;
                     nextRoundMatches.push({ t1: w1, t2: w2, score1: 0, score2: 0, played: false });
                 }
-                tourRounds.push(nextRoundMatches);
-                currentRoundIdx++;
-                currentMatchIdx = 0;
+                tourRounds.push(nextRoundMatches); currentRoundIdx++; currentMatchIdx = 0;
                 gameState = 'TOUR_BRACKET';
             }
-        } else {
-            gameState = 'TOUR_BRACKET';
-        }
-    }
-    else { gameState = 'MENU'; entities = []; }
+        } else { gameState = 'TOUR_BRACKET'; }
+    } else { gameState = 'MENU'; entities = []; }
 }
 
 function executeBotTurn() {
@@ -1251,8 +1319,7 @@ function startCampaignLevel(lvlIdx) {
 
 function startTournamentMatch() {
     let match = tourRounds[currentRoundIdx][currentMatchIdx];
-    isVsBot = false; 
-    p1Goals = 0; p2Goals = 0;
+    isVsBot = false; p1Goals = 0; p2Goals = 0;
     isResettingPositions = false; isEvacuating = false; matchWinner = null; ballTrail = []; fieldScale = 1.0; targetFieldScale = 1.0; globalSpawnAlpha = 255; isEditingTactic = false; isGoalCelebrating = false;
     activeModifiers = []; goalW = defaultGoalW;
 
@@ -1278,10 +1345,10 @@ function touchStarted(e) {
     if (matchWinner) return false;
     if (millis() - lastTouchTime < TOUCH_COOLDOWN) { if (e) e.preventDefault(); return false; }
 
-    if (gameState === 'GAME' && !isEditingTactic) {
+    if (gameState === 'GAME' && !isEditingTactic && !isResettingPositions && !isEvacuating && !isGoalCelebrating) {
         if (isCampaign && mouseX > devSkipClickZone.x && mouseX < devSkipClickZone.x + devSkipClickZone.w &&
             mouseY > devSkipClickZone.y && mouseY < devSkipClickZone.y + devSkipClickZone.h) {
-            triggerVibrate(40); playMenuSound(); triggerWin('КРАСНЫЕ'); lastTouchTime = millis(); if (e) e.preventDefault(); return 
+            triggerVibrate(40); playMenuSound(); triggerWin('КРАСНЫЕ'); lastTouchTime = millis(); if (e) e.preventDefault(); return false;
         }
         let clickInTopTab = (mouseX > topScoreClickZone.x && mouseX < topScoreClickZone.x + topScoreClickZone.w && mouseY > topScoreClickZone.y && mouseY < topScoreClickZone.y + topScoreClickZone.h);
         let clickInBottomTab = (mouseX > bottomScoreClickZone.x && mouseX < bottomScoreClickZone.x + bottomScoreClickZone.w && mouseY > bottomScoreClickZone.y && mouseY < bottomScoreClickZone.y + bottomScoreClickZone.h);
@@ -1290,6 +1357,17 @@ function touchStarted(e) {
             gameState = isTournament ? 'TOUR_BRACKET' : 'MENU'; 
             isCampaign = false; activeModifiers = []; goalW = defaultGoalW; entities = []; isGoalCelebrating = false;
             lastTouchTime = millis(); if (e) e.preventDefault(); return false; 
+        }
+
+        if (isVsBot && currentTurn === PLAYER2_COLOR) return false;
+
+        for (let ent of entities) {
+            if (!ent.isBall && ent.color === currentTurn) {
+                if (dist(mouseX, mouseY, ent.p.x, ent.p.y) < ent.d * 1.2) {
+                    selectedChip = ent;
+                    break;
+                }
+            }
         }
     }
 
@@ -1326,300 +1404,56 @@ function touchStarted(e) {
         if (mouseX > vibroToggleBtn.x && mouseX < vibroToggleBtn.x + vibroToggleBtn.w && mouseY > vibroToggleBtn.y && mouseY < vibroToggleBtn.y + vibroToggleBtn.h) { vibrationEnabled = !vibrationEnabled; triggerVibrate(30); lastTouchTime = millis(); if (e) e.preventDefault(); return false; }
         if (mouseX > sliderX - 10 && mouseX < sliderX + sliderW + 10 && mouseY > sliderY - 10 && mouseY < sliderY + sliderH + 10) { isDraggingSlider = true; }
         
-        if (mouseX > p2LeftBtn.x && mouseX < p2LeftBtn.x + p2LeftBtn.w && mouseY > p2Y && mouseY < p2Y + p2LeftBtn.h) { p2TacticIdx = (p2TacticIdx - 1 + TACTICS.length) % TACTICS.length; playSound('click'); lastTouchTime = millis(); if (e) e.preventDefault(); return false; }
-        if (mouseX > p2RightBtn.x && mouseX < p2RightBtn.x + p2RightBtn.w && mouseY > p2Y && mouseY < p2Y + p2RightBtn.h) { p2TacticIdx = (p2TacticIdx + 1) % TACTICS.length; playSound('click'); lastTouchTime = millis(); if (e) e.preventDefault(); return false; }
-        if (TACTICS[p2TacticIdx] === 'СВОЯ' && mouseX > p2SetupBtn.x && mouseX < p2SetupBtn.x + p2SetupBtn.w && mouseY > p2SetupBtn.y && mouseY < p2SetupBtn.y + p2SetupBtn.h) { startTacticEditing(PLAYER2_COLOR); playSound('click'); lastTouchTime = millis(); if (e) e.preventDefault(); return false; }
-        if (mouseX > p1LeftBtn.x && mouseX < p1LeftBtn.x + p1LeftBtn.w && mouseY > p1Y && mouseY < p1Y + p1LeftBtn.h) { p1TacticIdx = (p1TacticIdx - 1 + TACTICS.length) % TACTICS.length; playSound('click'); lastTouchTime = millis(); if (e) e.preventDefault(); return false; }
-        if (mouseX > p1RightBtn.x && mouseX < p1RightBtn.x + p1RightBtn.w && mouseY > p1Y && mouseY < p1Y + p1RightBtn.h) { p1TacticIdx = (p1TacticIdx + 1) % TACTICS.length; playSound('click'); lastTouchTime = millis(); if (e) e.preventDefault(); return false; }
-        if (TACTICS[p1TacticIdx] === 'СВОЯ' && mouseX > p1SetupBtn.x && mouseX < p1SetupBtn.x + p1SetupBtn.w && mouseY > p1SetupBtn.y && mouseY < p1SetupBtn.y + p1SetupBtn.h) { startTacticEditing(PLAYER1_COLOR); playSound('click'); lastTouchTime = millis(); if (e) e.preventDefault(); return false; }
+        if (mouseX > p2LeftBtn.x && mouseX < p2LeftBtn.x + p2LeftBtn.w && mouseY > p2Y && mouseY < p2Y + p2LeftBtn.h) { p2TacticIdx = (p2TacticIdx - 1 + TACTICS.length) % TACTICS.length; playSound('click'); }
+        if (mouseX > p2RightBtn.x && mouseX < p2RightBtn.x + p2RightBtn.w && mouseY > p2Y && mouseY < p2Y + p2RightBtn.h) { p2TacticIdx = (p2TacticIdx + 1) % TACTICS.length; playSound('click'); }
+        
+        if (mouseX > p1LeftBtn.x && mouseX < p1LeftBtn.x + p1LeftBtn.w && mouseY > p1Y && mouseY < p1Y + p1LeftBtn.h) { p1TacticIdx = (p1TacticIdx - 1 + TACTICS.length) % TACTICS.length; playSound('click'); }
+        if (mouseX > p1RightBtn.x && mouseX < p1RightBtn.x + p1RightBtn.w && mouseY > p1Y && mouseY < p1Y + p1RightBtn.h) { p1TacticIdx = (p1TacticIdx + 1) % TACTICS.length; playSound('click'); }
 
         if (mouseX > backBtn.x && mouseX < backBtn.x + backBtn.w && mouseY > backBtn.y && mouseY < backBtn.y + backBtn.h) { playSound('click'); gameState = 'MENU'; lastTouchTime = millis(); if (e) e.preventDefault(); return false; }
     }
-    else if (gameState === 'GAME') {
-        if (isGoalCelebrating) return false;
-        if (isEditingTactic) {
-            let isOverTopSave = (mouseX > saveBtnZone.x && mouseX < saveBtnZone.x + saveBtnZone.w && mouseY > saveBtnZone.y && mouseY < saveBtnZone.y + saveBtnZone.h);
-            let isOverBottomSave = (mouseX > saveBtnZone.x && mouseX < saveBtnZone.x + saveBtnZone.w && mouseY > (fieldY + fieldH) && mouseY < (fieldY + fieldH + goalH));
-            if ((editingTeam === PLAYER2_COLOR && isOverTopSave) || (editingTeam === PLAYER1_COLOR && isOverBottomSave)) { saveCustomTactic(); lastTouchTime = millis(); if (e) e.preventDefault(); return false; }
+
+    if (e) e.preventDefault();
+    return false;
+}
+
+function touchReleased(e) {
+    isDraggingSlider = false;
+    
+    if (gameState === 'GAME' && selectedChip) {
+        let mouseVec = createVector(mouseX, mouseY);
+        let pullVec = p5.Vector.sub(selectedChip.p, mouseVec);
+        let mag = pullVec.mag();
+        
+        if (mag > 15) {
+            let maxPull = 120;
+            if (mag > maxPull) pullVec.setMag(maxPull);
             
-            let mousePos = createVector(mouseX, mouseY);
-            for (let ent of entities) {
-                if (!ent.isBall && ent.color === editingTeam) {
-                    if (dist(mousePos.x, mousePos.y, ent.p.x, ent.p.y) < ent.d/2 + 20) { selectedChip = ent; break; }
-                }
-            }
-        } else {
-            if (isResettingPositions || isEvacuating || (isVsBot && currentTurn === PLAYER2_COLOR)) return false; 
-            for (let ent of entities) { if (ent.v.mag() > 0.1) return false; } 
-            let mousePos = createVector(mouseX, mouseY);
-            for (let ent of entities) {
-                if (!ent.isBall && ent.color === currentTurn) {
-                    if (dist(mousePos.x, mousePos.y, ent.p.x, ent.p.y) < ent.d/2 + 25) { selectedChip = ent; break; }
-                }
-            }
+            selectedChip.v.set(p5.Vector.mult(pullVec, STRIKE_POWER));
+            lastTouchColor = currentTurn;
+            playSound('hit', selectedChip.v.mag() / 10);
+            
+            currentTurn = (currentTurn === PLAYER1_COLOR) ? PLAYER2_COLOR : PLAYER1_COLOR;
+            turnSwitchedThisRoll = true;
         }
+        selectedChip = null;
     }
     if (e) e.preventDefault();
     return false;
 }
 
-function mousePressed(e) { touchStarted(e); }
-
-function mouseDragged() {
-    if (gameState === 'GAME' && isEditingTactic && selectedChip) {
-        selectedChip.p.x = constrain(mouseX, fieldX + selectedChip.d/2, fieldX + fieldW - selectedChip.d/2);
-        if (editingTeam === PLAYER2_COLOR) { selectedChip.p.y = constrain(mouseY, fieldY - goalH + selectedChip.d/2, fieldY + fieldH/2 - selectedChip.d/2 - 5); } 
-        else { selectedChip.p.y = constrain(mouseY, fieldY + fieldH/2 + selectedChip.d/2 + 5, fieldY + fieldH + goalH - selectedChip.d/2); }
-    }
+function mousePressed(e) {
+    return touchStarted(e);
 }
 
-function mouseReleased() {
-    isDraggingSlider = false;
-    if (gameState === 'GAME' && isEditingTactic && selectedChip) { selectedChip = null; return; }
-    if (gameState === 'GAME' && selectedChip && !matchWinner && !isGoalCelebrating) {
-        let mousePos = createVector(mouseX, mouseY); let force = p5.Vector.sub(selectedChip.p, mousePos);
-        if (force.mag() > 12) {
-            force.limit(130); 
-            let lvl = isCampaign ? CAMPAIGN_LEVELS[currentLevel] : null;
-            let speedBoost = (lvl && (lvl.mod === 'fast_ball' || lvl.mod === 'chaos')) ? 1.6 : 1.0;
-            force.mult(STRIKE_POWER * speedBoost); selectedChip.v.add(force);
-            triggerVibrate(25);
-            currentTurn = (currentTurn === PLAYER1_COLOR) ? PLAYER2_COLOR : PLAYER1_COLOR;
-            turnSwitchedThisRoll = true; 
-        }
-        selectedChip = null; 
-    }
+function mouseReleased(e) {
+    return touchReleased(e);
 }
-
-function startTacticEditing(team) {
-    gameState = 'GAME'; isEditingTactic = true; editingTeam = team; entities = []; activeModifiers = [];
-    let centerX = fieldX + fieldW / 2;
-    entities.push(new Entity(centerX, fieldY + fieldH / 2, 18, '#fff', true)); 
-    if (team === PLAYER2_COLOR) spawnTeamToPositions(PLAYER2_COLOR, 'БАЛАНС', true, null);
-    else spawnTeamToPositions(PLAYER1_COLOR, 'БАЛАНС', false, null);
-}
-
-function saveCustomTactic() {
-    let centerX = fieldX + fieldW / 2; let savedArr = [];
-    for (let e of entities) {
-        if (!e.isBall && e.color === editingTeam) {
-            let offset = createVector(e.p.x - centerX, e.p.y - (fieldY + fieldH/2)); savedArr.push(offset);
-        }
-    }
-    if (editingTeam === PLAYER2_COLOR) { p2CustomPositions = savedArr; p2Saved = true; } 
-    else { p1CustomPositions = savedArr; p1Saved = true; }
-    triggerVibrate(50); playSound('click'); isEditingTactic = false; editingTeam = null; gameState = 'SETTINGS_PANEL';
-}
-
-function drawSaveButtonsOverlay() {
-    push(); textAlign(CENTER, CENTER); textStyle(BOLD); textSize(13);
-    let mouseOverTop = (mouseX > saveBtnZone.x && mouseX < saveBtnZone.x + saveBtnZone.w && mouseY > saveBtnZone.y && mouseY < saveBtnZone.y + saveBtnZone.h);
-    let mouseOverBottom = (mouseX > saveBtnZone.x && mouseX < saveBtnZone.x + saveBtnZone.w && mouseY > (fieldY + fieldH) && mouseY < (fieldY + fieldH + goalH));
-
-    if (editingTeam === PLAYER2_COLOR) {
-        fill(mouseOverTop ? '#388e3c' : '#2e7d32'); rect(saveBtnZone.x, saveBtnZone.y, saveBtnZone.w, saveBtnZone.h, 4); fill(255); text("СОХРАНИТЬ", saveBtnZone.x + saveBtnZone.w/2, saveBtnZone.y + saveBtnZone.h/2);
-    } else { fill(30); rect(saveBtnZone.x, saveBtnZone.y, saveBtnZone.w, saveBtnZone.h, 4); fill(80); text("РЕДАКТОР СИНИХ", saveBtnZone.x + saveBtnZone.w/2, saveBtnZone.y + saveBtnZone.h/2); }
-
-    if (editingTeam === PLAYER1_COLOR) {
-        fill(mouseOverBottom ? '#388e3c' : '#2e7d32'); rect(saveBtnZone.x, fieldY + fieldH, saveBtnZone.w, goalH, 4); fill(255); text("СОХРАНИТЬ", saveBtnZone.x + saveBtnZone.w/2, fieldY + fieldH + goalH/2);
-    } else { fill(30); rect(saveBtnZone.x, fieldY + fieldH, saveBtnZone.w, goalH, 4); fill(80); text("РЕДАКТОР КРАСНЫХ", saveBtnZone.x + saveBtnZone.w/2, fieldY + fieldH + goalH/2); }
-    pop();
-}
-
-function startGameMatch() {
-    p1Goals = 0; p2Goals = 0; isResettingPositions = false; isEvacuating = false; matchWinner = null; ballTrail = []; fieldScale = 1.0; targetFieldScale = 1.0; globalSpawnAlpha = 255; isEditingTactic = false; isGoalCelebrating = false;
-    activeModifiers = []; goalW = defaultGoalW;
-    if(isVsBot && TACTICS[p2TacticIdx] !== 'СВОЯ') p2TacticIdx = floor(random(0, 4)); 
-    resetFieldDirect(PLAYER1_COLOR); gameState = 'GAME';
-}
-
-function resetFieldDirect(nextTurn) {
-    entities = []; particles = []; ballTrail = []; lastTouchColor = null; currentTurn = nextTurn; turnSwitchedThisRoll = false;
-    let centerX = fieldX + fieldW / 2;
-    entities.push(new Entity(centerX, fieldY + fieldH / 2, 18, '#fff', true)); 
-    spawnTeamToPositions(PLAYER2_COLOR, TACTICS[p2TacticIdx], true, null);
-    spawnTeamToPositions(PLAYER1_COLOR, TACTICS[p1TacticIdx], false, null);
-}
-
-function animateFieldToTactic(nextTurn) {
-    isResettingPositions = true; isEvacuating = false; lastTouchColor = null; currentTurn = nextTurn; turnSwitchedThisRoll = false; targetPositions = []; ballTrail = [];
-    let centerX = fieldX + fieldW / 2;
-    targetPositions.push(createVector(centerX, fieldY + fieldH / 2)); 
-    for(let e of entities) e.v.set(0,0); 
-    spawnTeamToPositions(PLAYER2_COLOR, TACTICS[p2TacticIdx], true, targetPositions);
-    spawnTeamToPositions(PLAYER1_COLOR, TACTICS[p1TacticIdx], false, targetPositions);
-    globalSpawnAlpha = 0; 
-}
-
-function spawnTeamToPositions(teamColor, tacticName, isTop, arrayToPush) {
-    let centerX = fieldX + fieldW / 2; let chipD = 35; let tempPositions = [];
-    if (tacticName === 'СВОЯ') {
-        let savedPositions = isTop ? p2CustomPositions : p1CustomPositions;
-        if (savedPositions.length === 0) tacticName = 'БАЛАНС';
-        else { for (let offset of savedPositions) { tempPositions.push(createVector(centerX + offset.x, (fieldY + fieldH/2) + offset.y)); } }
-    }
-
-    if (tacticName === 'РАНДОМ') {
-        let spawned = 0; let minY = isTop ? (fieldY + chipD) : (fieldY + fieldH * 0.53); let maxY = isTop ? (fieldY + fieldH * 0.47) : (fieldY + fieldH - chipD);
-        while(spawned < 5) {
-            let rx = random(fieldX + chipD, fieldX + fieldW - chipD); let ry = random(minY, maxY); let tooClose = false;
-            for(let p of tempPositions) { if(dist(rx, ry, p.x, p.y) < chipD + 10) tooClose = true; }
-            if(!tooClose) { tempPositions.push(createVector(rx, ry)); spawned++; }
-        }
-    } else if (tacticName !== 'СВОЯ') {
-        if (isTop) {
-            if (tacticName === 'БАЛАНС') {
-                tempPositions.push(createVector(centerX, fieldY + 65)); tempPositions.push(createVector(centerX - 45, fieldY + 85)); tempPositions.push(createVector(centerX + 45, fieldY + 85)); tempPositions.push(createVector(centerX - 80, fieldY + fieldH * 0.35)); tempPositions.push(createVector(centerX + 80, fieldY + fieldH * 0.35));
-            } else if (tacticName === 'АТАКА') {
-                tempPositions.push(createVector(centerX, fieldY + 55)); tempPositions.push(createVector(centerX, fieldY + fieldH * 0.22)); tempPositions.push(createVector(centerX, fieldY + fieldH * 0.38)); tempPositions.push(createVector(centerX - 85, fieldY + fieldH * 0.38)); tempPositions.push(createVector(centerX + 85, fieldY + fieldH * 0.38));
-            } else if (tacticName === 'ЗАЩИТА') {
-                tempPositions.push(createVector(centerX, fieldY + 55)); tempPositions.push(createVector(centerX - 60, fieldY + 60)); tempPositions.push(createVector(centerX + 60, fieldY + 60)); tempPositions.push(createVector(centerX, fieldY + fieldH * 0.22)); tempPositions.push(createVector(centerX, fieldY + fieldH * 0.38));
-            }
-        } else {
-            if (tacticName === 'БАЛАНС') {
-                tempPositions.push(createVector(centerX, fieldY + fieldH - 65)); tempPositions.push(createVector(centerX - 45, fieldY + fieldH - 85)); tempPositions.push(createVector(centerX + 45, fieldY + fieldH - 85)); tempPositions.push(createVector(centerX - 80, fieldY + fieldH - fieldH * 0.35)); tempPositions.push(createVector(centerX + 80, fieldY + fieldH - fieldH * 0.35));
-            } else if (tacticName === 'АТАКА') {
-                tempPositions.push(createVector(centerX, fieldY + fieldH - 55)); tempPositions.push(createVector(centerX, fieldY + fieldH - fieldH * 0.22)); tempPositions.push(createVector(centerX, fieldY + fieldH - fieldH * 0.38)); tempPositions.push(createVector(centerX - 85, fieldY + fieldH - fieldH * 0.38)); tempPositions.push(createVector(centerX + 85, fieldY + fieldH - fieldH * 0.38));
-            } else if (tacticName === 'ЗАЩИТА') {
-                tempPositions.push(createVector(centerX, fieldY + fieldH - 55)); tempPositions.push(createVector(centerX - 60, fieldY + fieldH - 60)); tempPositions.push(createVector(centerX + 60, fieldY + fieldH - 60)); tempPositions.push(createVector(centerX, fieldY + fieldH - fieldH * 0.22)); tempPositions.push(createVector(centerX, fieldY + fieldH - fieldH * 0.38));
-            }
-        }
-    }
-    if (arrayToPush) { for(let pos of tempPositions) arrayToPush.push(pos); } 
-    else { for(let pos of tempPositions) entities.push(new Entity(pos.x, pos.y, chipD, teamColor, false)); }
-}
-
-function checkCollisions() {
-    for (let i = 0; i < entities.length; i++) {
-        for (let j = i + 1; j < entities.length; j++) {
-            let e1 = entities[i]; e2 = entities[j];
-            let dx = e2.p.x - e1.p.x; let dy = e2.p.y - e1.p.y;
-            let distSq = dx * dx + dy * dy; let minDist = (e1.d + e2.d) / 2;
-            if (distSq < minDist * minDist) {
-                let d = sqrt(distSq); let normalX = dx / d; let normalY = dy / d; let overlap = minDist - d;
-                e1.p.x -= normalX * (overlap / 2); e1.p.y -= normalY * (overlap / 2);
-                e2.p.x += normalX * (overlap / 2); e2.p.y += normalY * (overlap / 2);
-                let vx = e2.v.x - e1.v.x; let vy = e2.v.y - e1.v.y; let vNormal = vx * normalX + vy * normalY;
-                if (vNormal < 0) {
-                    let totalMass = e1.mass + e2.mass; let impulse = (1.8 * vNormal) / totalMass; let strikeIntensity = abs(vNormal);
-                    e1.v.x += impulse * e2.mass * normalX; e1.v.y += impulse * e2.mass * normalY;
-                    e2.v.x -= impulse * e1.mass * normalX; e2.v.y -= impulse * e1.mass * normalY;
-                    if (e1.isBall && !e2.isBall) lastTouchColor = e2.color;
-                    if (e2.isBall && !e1.isBall) lastTouchColor = e1.color;
-                    if (strikeIntensity > 2) { triggerVibrate(20); playSound('hit', strikeIntensity / 7); }
-                    let sparkColor = e1.v.magSq() > e2.v.magSq() ? e1.color : e2.color;
-                    if (strikeIntensity > 1.5) createSparks((e1.p.x + e2.p.x)/2, (e1.p.y + e2.p.y)/2, sparkColor, strikeIntensity);
-                }
-            }
-        }
-    }
-}
-
-function drawOriginalPull(chipPos) {
-    let mousePos = createVector(mouseX, mouseY); let pullVec = p5.Vector.sub(mousePos, chipPos); let d = pullVec.mag();
-    if (d > 8) {
-        let maxPull = 130; let currentPull = min(d, maxPull); let angle = pullVec.heading();
-        push(); translate(chipPos.x, chipPos.y); rotate(angle);
-        let currentAlpha = map(aimAlpha, 0, 50, 0, 110); fill(0, currentAlpha); noStroke(); ellipse(0, 0, selectedChip ? selectedChip.d * 3.8 : 130);
-        stroke(255, map(aimAlpha, 0, 50, 0, 140)); strokeWeight(5); line(0, 0, currentPull, 0);
-        fill(255, map(aimAlpha, 0, 50, 0, 200)); noStroke(); ellipse(currentPull, 0, 8, 8);
-        let shootDist = map(currentPull, 0, maxPull, 30, 240); let baseAlpha = map(aimAlpha, 0, 50, 0, 160);
-        let steps = 14;
-        for (let i = 0; i < steps; i++) {
-            let t1 = i / steps; let t2 = (i + 1) / steps;
-            let x1 = -t1 * shootDist; let x2 = -t2 * shootDist;
-            let w1 = map(t1, 0, 1, 12, 1); let w2 = map(t2, 0, 1, 12, 1);
-            let a1 = map(t1, 0, 1, baseAlpha, 0); let a2 = map(t2, 0, 1, baseAlpha, 0);
-            noStroke(); beginShape(); fill(color(255, a1)); vertex(x1, -w1 / 2); fill(color(255, a2)); vertex(x2, -w2 / 2); fill(color(255, a2)); vertex(x2, w2 / 2); fill(color(255, a1)); vertex(x1, w1 / 2); endShape(CLOSE);
-        }
-        pop();
-    }
-}
-
-function drawVisualLayout() {
-    if (!fieldW) return; 
-    push(); noStroke(); let stripes = 9; let sh = fieldH / stripes;
-    let lvl = isCampaign ? CAMPAIGN_LEVELS[currentLevel] : null;
-
-    let topGoalW = goalW; let botGoalW = goalW;
-    if (lvl && (lvl.mod === 'gate_shift' || lvl.mod === 'chaos')) { topGoalW = goalW * lvl.bScale; botGoalW = goalW * lvl.pScale; }
-
-    fill('#225e25'); 
-    rect(fieldX + fieldW/2 - topGoalW/2, fieldY - goalH, topGoalW, goalH); 
-    rect(fieldX + fieldW/2 - botGoalW/2, fieldY + fieldH, botGoalW, goalH);
-    
-    for(let i=0; i<stripes; i++) { fill(i % 2 === 0 ? FIELD_COLOR_1 : FIELD_COLOR_2); rect(fieldX, fieldY + i*sh, fieldW, sh); }
-    
-    stroke(BORDER_COLOR); strokeWeight(boundarySize); noFill();
-    let penaltyW = goalW * 1.35; let penaltyH = fieldH * 0.11;
-    rect(fieldX + fieldW/2 - penaltyW/2, fieldY, penaltyW, penaltyH); 
-    rect(fieldX + fieldW/2 - penaltyW/2, fieldY + fieldH - penaltyH, penaltyW, penaltyH);
-    
-    let arcSize = fieldW * 0.22;
-    arc(fieldX + fieldW/2, fieldY + penaltyH, arcSize, arcSize, 0, PI);
-    arc(fieldX + fieldW/2, fieldY + fieldH - penaltyH, arcSize, arcSize, PI, TWO_PI);
-    
-    line(fieldX, fieldY + fieldH/2, fieldX + fieldW, fieldY + fieldH/2); 
-    ellipse(fieldX + fieldW/2, fieldY + fieldH/2, 85); 
-    
-    rect(fieldX + fieldW/2 - topGoalW/2, fieldY - goalH, topGoalW, goalH); 
-    rect(fieldX + fieldW/2 - botGoalW/2, fieldY + fieldH, botGoalW, goalH); 
-    rect(fieldX, fieldY, fieldW, fieldH); 
-    
-    fill(255); noStroke();
-    ellipse(fieldX + fieldW/2 - topGoalW/2, fieldY, 5); ellipse(fieldX + fieldW/2 + topGoalW/2, fieldY, 5); 
-    ellipse(fieldX + fieldW/2 - botGoalW/2, fieldY + fieldH, 5); ellipse(fieldX + fieldW/2 + botGoalW/2, fieldY + fieldH, 5);
-    pop();
-}
-
-function drawFieldScore() {
-    push(); let goalLeftX = fieldX + fieldW/2 - goalW/2; let earWidth = goalLeftX - fieldX; let leftEarCenterX = fieldX + earWidth / 2; let rightEarCenterX = (fieldX + fieldW) - earWidth / 2; let ballSize = 12; let spacing = 16;
-    let topY = fieldY - goalH + 15;
-    for (let i = 0; i < maxGoalsToWin; i++) {
-        fill(i < p2Goals ? PLAYER2_COLOR : '#444444'); noStroke(); ellipse(leftEarCenterX + (i - (maxGoalsToWin-1)/2) * spacing, topY, ballSize);
-        fill(i < p1Goals ? PLAYER1_COLOR : '#444444'); ellipse(rightEarCenterX + (i - (maxGoalsToWin-1)/2) * spacing, topY, ballSize);
-    }
-    let bottomY = fieldY + fieldH + goalH - 15;
-    for (let i = 0; i < maxGoalsToWin; i++) {
-        fill(i < p1Goals ? PLAYER1_COLOR : '#444444'); noStroke(); ellipse(leftEarCenterX + (i - (maxGoalsToWin-1)/2) * spacing, bottomY, ballSize);
-        fill(i < p2Goals ? PLAYER2_COLOR : '#444444'); ellipse(rightEarCenterX + (i - (maxGoalsToWin-1)/2) * spacing, bottomY, ballSize);
-    }
-    pop();
-}
-
-function drawGoalOverlay() {
-    push(); textAlign(CENTER, CENTER); textFont('Arial, sans-serif'); textStyle(BOLD);
-    let alpha = map(goalTextTimer, 0, 120, 0, 255);
-    textSize(54); fill(255, alpha); stroke(0, map(goalTextTimer, 0, 120, 0, 180)); strokeWeight(8); text(goalOverlayText, width / 2, height * 0.45);
-    pop();
-}
-
-function drawWinOverlay() {
-    push(); textAlign(CENTER, CENTER); textFont('Arial, sans-serif'); textStyle(BOLD);
-    textSize(40); fill(255); stroke(0); strokeWeight(8);
-    let winText = `ПОБЕДА:\n${matchWinner}!`;
-    if(isCampaign) winText = (p1Goals > p2Goals) ? "УРОВЕНЬ ПРОЙДЕН!" : "ВЫ ПРОИГРАЛИ!";
-    text(winText, width / 2, height * 0.43);
-    pop();
-}
-// Этот код принудительно убирает лишние отступы при запуске на телефоне
-window.addEventListener('load', () => {
-    setTimeout(() => {
-        window.scrollTo(0, 1);
-        if (typeof windowResized === 'function') {
-            windowResized();
-        }
-    }, 300);
-});
 
 function windowResized() {
-    if (windowWidth > windowHeight) {
-        return; 
-    }
-    resizeCanvas(windowWidth, windowHeight); 
-    calculateFieldMetrics(); 
+    resizeCanvas(windowWidth, windowHeight);
+    calculateFieldMetrics();
 }
 </script>
-
 </body>
 </html>
