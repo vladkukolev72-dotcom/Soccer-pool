@@ -236,7 +236,13 @@ const TOURNAMENT_PRESET_TEAMS = [
 
 const gameSounds = {};
 let audioInitialized = false;
-
+function playMenuSound() {
+    if (gameSounds['click']) {
+        gameSounds['click'].volume = 0.5; // Сделаем чуть тише, чтобы не оглушало
+        gameSounds['click'].currentTime = 0;
+        gameSounds['click'].play().catch(e => console.log("Menu sound error"));
+    }
+}
 // ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ (Её не хватало, из-за этого Eruda ругалась!)
 function initAudio() {
     if (audioInitialized) return; // Если уже запустили, второй раз не пересоздаем
@@ -315,32 +321,20 @@ function playSound(type, volume = 1.0) {
 }
 
 // АКТИВАЦИЯ ЗВУКА ПО КЛИКУ И ТАПУ (Снятие блоков Chrome)
-// АКТИВАЦИЯ ЗВУКА ПО КЛИКУ И ТАПУ (Снятие блоков Chrome без лишних звуков)
 function touchStarted() {
     initAudio();
-    
-    // Воспроизводим пустой тихий звук, чтобы просто «разбудить» аудио-движок браузера
-    if (gameSounds['click']) {
-        let originalVolume = gameSounds['click'].volume;
-        gameSounds['click'].volume = 0.0; // Громкость в ноль, чтобы не мешать кнопкам меню!
-        gameSounds['click'].play().catch(e => console.log("Audio wake up"));
-        gameSounds['click'].volume = originalVolume;
+    // Больше никаких звуков тут!
+    if (window.getAudioContext && window.getAudioContext().state === 'suspended') {
+        window.getAudioContext().resume();
     }
 }
 
 function mousePressed() {
     initAudio();
-    
-    if (gameSounds['click']) {
-        let originalVolume = gameSounds['click'].volume;
-        gameSounds['click'].volume = 0.0; // Громкость в ноль
-        gameSounds['click'].play().catch(e => console.log("Audio wake up"));
-        gameSounds['click'].volume = originalVolume;
+    // Больше никаких звуков тут!
+    if (window.getAudioContext && window.getAudioContext().state === 'suspended') {
+        window.getAudioContext().resume();
     }
-}
-
-function triggerVibrate(duration) {
-    if (vibrationEnabled && navigator.vibrate) navigator.vibrate(duration);
 }
 
 function drawStar(x, y, radius1, radius2, npoints) {
@@ -1276,7 +1270,7 @@ function touchStarted(e) {
         let by = height/2 - boxH/2;
         let closeBtn = { x: width/2 - 60, y: by + boxH - 45, w: 120, h: 30 };
         if (mouseX > closeBtn.x && mouseX < closeBtn.x + closeBtn.w && mouseY > closeBtn.y && mouseY < closeBtn.y + closeBtn.h) {
-            playSound('click'); showTutorialOverlay = false;
+            playMenuSound(); showTutorialOverlay = false;
         }
         if (e) e.preventDefault(); return false;
     }
@@ -1287,7 +1281,7 @@ function touchStarted(e) {
     if (gameState === 'GAME' && !isEditingTactic) {
         if (isCampaign && mouseX > devSkipClickZone.x && mouseX < devSkipClickZone.x + devSkipClickZone.w &&
             mouseY > devSkipClickZone.y && mouseY < devSkipClickZone.y + devSkipClickZone.h) {
-            triggerVibrate(40); playSound('click'); triggerWin('КРАСНЫЕ'); lastTouchTime = millis(); if (e) e.preventDefault(); return false;
+            triggerVibrate(40); playMenuSound(); triggerWin('КРАСНЫЕ'); lastTouchTime = millis(); if (e) e.preventDefault(); return 
         }
         let clickInTopTab = (mouseX > topScoreClickZone.x && mouseX < topScoreClickZone.x + topScoreClickZone.w && mouseY > topScoreClickZone.y && mouseY < topScoreClickZone.y + topScoreClickZone.h);
         let clickInBottomTab = (mouseX > bottomScoreClickZone.x && mouseX < bottomScoreClickZone.x + bottomScoreClickZone.w && mouseY > bottomScoreClickZone.y && mouseY < bottomScoreClickZone.y + bottomScoreClickZone.h);
@@ -1389,7 +1383,7 @@ function mouseReleased() {
             let lvl = isCampaign ? CAMPAIGN_LEVELS[currentLevel] : null;
             let speedBoost = (lvl && (lvl.mod === 'fast_ball' || lvl.mod === 'chaos')) ? 1.6 : 1.0;
             force.mult(STRIKE_POWER * speedBoost); selectedChip.v.add(force);
-            triggerVibrate(25); playSound('hit', force.mag() / 15); 
+            triggerVibrate(25);
             currentTurn = (currentTurn === PLAYER1_COLOR) ? PLAYER2_COLOR : PLAYER1_COLOR;
             turnSwitchedThisRoll = true; 
         }
