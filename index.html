@@ -274,13 +274,20 @@ function playSound(type, volume = 1.0) {
     try {
         if (typeof soundEnabled !== 'undefined' && !soundEnabled) return;
         
-        // Пытаемся запустить аудио при каждом звуке на случай, если юзер только что тапнул
         initAudio(); 
 
         let soundKey = type;
 
-        if (type === 'hit') soundKey = 'ball_hit';
-        if (type === 'wall') soundKey = 'ball_wall';
+        // Умное разделение звуков:
+        if (type === 'hit') {
+            soundKey = 'ball_hit';
+        } else if (type === 'wall') {
+            soundKey = 'ball_wall';
+        } else if (type === 'chips_hit' || type === 'chip_hit') {
+            soundKey = 'chips_hit';
+        } else if (type === 'chip_wall') {
+            soundKey = 'chip_wall';
+        }
 
         if (gameSounds && gameSounds[soundKey]) {
             let audio = gameSounds[soundKey];
@@ -308,16 +315,30 @@ function playSound(type, volume = 1.0) {
 }
 
 // АКТИВАЦИЯ ЗВУКА ПО КЛИКУ И ТАПУ (Снятие блоков Chrome)
+// АКТИВАЦИЯ ЗВУКА ПО КЛИКУ И ТАПУ (Снятие блоков Chrome без лишних звуков)
 function touchStarted() {
     initAudio();
-    if (gameSounds['click']) playSound('click', 0.1); // Пробный тихий пинг при первом таче
+    
+    // Воспроизводим пустой тихий звук, чтобы просто «разбудить» аудио-движок браузера
+    if (gameSounds['click']) {
+        let originalVolume = gameSounds['click'].volume;
+        gameSounds['click'].volume = 0.0; // Громкость в ноль, чтобы не мешать кнопкам меню!
+        gameSounds['click'].play().catch(e => console.log("Audio wake up"));
+        gameSounds['click'].volume = originalVolume;
+    }
 }
 
 function mousePressed() {
     initAudio();
-    if (gameSounds['click']) playSound('click', 0.1);
-}
     
+    if (gameSounds['click']) {
+        let originalVolume = gameSounds['click'].volume;
+        gameSounds['click'].volume = 0.0; // Громкость в ноль
+        gameSounds['click'].play().catch(e => console.log("Audio wake up"));
+        gameSounds['click'].volume = originalVolume;
+    }
+}
+
 function triggerVibrate(duration) {
     if (vibrationEnabled && navigator.vibrate) navigator.vibrate(duration);
 }
