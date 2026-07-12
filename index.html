@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>SoccerPool:UPDATE</title>
+    <title>SoccerPool</title>
     
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>eruda.init();</script>
@@ -791,8 +791,8 @@ function draw() {
 function drawMainMenu() {
     push(); textAlign(CENTER, CENTER); 
     textSize(44); textStyle(BOLD); fill(255);
-    text("SOCCERPOOL", width/2, height * 0.26);
-    fill('rgba(255,255,255,0.25)'); textStyle(NORMAL); textSize(12); text("v 1.7.5 CHAMPIONSHIP", width/2, height * 0.32);
+    text("S⚽CCERPOOL", width/2, height * 0.26);
+    fill('rgba(255,255,255,0.25)'); textStyle(NORMAL); textSize(12); text("v 1.8 SOUNDS", width/2, height * 0.32);
     
     let hPlay = (mouseX > playBtn.x && mouseX < playBtn.x + playBtn.w && mouseY > playBtn.y && mouseY < playBtn.y + playBtn.h);
     noFill(); stroke(hPlay ? 255 : 100); strokeWeight(1.5); rect(playBtn.x, playBtn.y, playBtn.w, playBtn.h, 6);
