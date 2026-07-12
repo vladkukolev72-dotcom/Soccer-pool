@@ -792,7 +792,7 @@ function draw() {
 function drawMainMenu() {
     push(); textAlign(CENTER, CENTER); 
     textSize(44); textStyle(BOLD); fill(255);
-    text("S⚽CCERPOOL", width/2, height * 0.26);
+    text("SOCCERPOOL", width/2, height * 0.26);
     fill('rgba(255,255,255,0.25)'); textStyle(NORMAL); textSize(12); text("v 1.8 SOUNDS", width/2, height * 0.32);
     
     let hPlay = (mouseX > playBtn.x && mouseX < playBtn.x + playBtn.w && mouseY > playBtn.y && mouseY < playBtn.y + playBtn.h);
@@ -805,7 +805,7 @@ function drawMainMenu() {
 
     let hCamp = (mouseX > campaignBtn.x && mouseX < campaignBtn.x + campaignBtn.w && mouseY > campaignBtn.y && mouseY < campaignBtn.y + campaignBtn.h);
     noFill(); stroke(hCamp ? '#00bcd4' : 100); rect(campaignBtn.x, campaignBtn.y, campaignBtn.w, campaignBtn.h, 6);
-    noStroke(); fill(hCamp ? 255 : 200); textStyle(BOLD); text("КАМПАНИЯ (10 УР)", width / 2, campaignBtn.y + campaignBtn.h / 2); 
+    noStroke(); fill(hCamp ? 255 : 200); textStyle(BOLD); text("КАМПАНИЯ", width / 2, campaignBtn.y + campaignBtn.h / 2); 
 
     let hSet = (mouseX > settingsMenuBtn.x && mouseX < settingsMenuBtn.x + settingsMenuBtn.w && mouseY > settingsMenuBtn.y && mouseY < settingsMenuBtn.y + settingsMenuBtn.h);
     noFill(); stroke(hSet ? 255 : 100); rect(settingsMenuBtn.x, settingsMenuBtn.y, settingsMenuBtn.w, settingsMenuBtn.h, 6);
