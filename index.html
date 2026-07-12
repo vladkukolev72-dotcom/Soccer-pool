@@ -240,7 +240,7 @@ function triggerVibrate(ms) {
 
 function playMenuSound() {
     if (gameSounds['click']) {
-        gameSounds['click'].volume = 0.2; // Тихое нажатие в меню
+        gameSounds['click'].volume = 1; // Тихое нажатие в меню
         gameSounds['click'].currentTime = 0; // Мгновенный сброс
         let playPromise = gameSounds['click'].play();
         if (playPromise !== undefined) {
