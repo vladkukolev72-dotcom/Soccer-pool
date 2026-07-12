@@ -682,7 +682,7 @@ function triggerWin(winnerName) {
         e.v.set(0, 0);
         if (!e.isBall && e.color === loseColor) e.color = '#555555'; 
     }
-    playSound('win_fanfare');
+    playSound();
     triggerVibrate(80);
 }
 
@@ -792,8 +792,8 @@ function draw() {
 function drawMainMenu() {
     push(); textAlign(CENTER, CENTER); 
     textSize(44); textStyle(BOLD); fill(255);
-    text("SOCCERPOOL", width/2, height * 0.26);
-    fill('rgba(255,255,255,0.25)'); textStyle(NORMAL); textSize(12); text("v 1.8 SOUNDS", width/2, height * 0.32);
+    text("Chip Shot: Soccer", width/2, height * 0.26);
+    fill('rgba(255,255,255,0.25)'); textStyle(NORMAL); textSize(12); text("v 1.8.5 esports", width/2, height * 0.32);
     
     let hPlay = (mouseX > playBtn.x && mouseX < playBtn.x + playBtn.w && mouseY > playBtn.y && mouseY < playBtn.y + playBtn.h);
     noFill(); stroke(hPlay ? 255 : 100); strokeWeight(1.5); rect(playBtn.x, playBtn.y, playBtn.w, playBtn.h, 6);
@@ -834,10 +834,10 @@ function drawTutorialModal() {
     let txtY = by + 60;
     let rules = [
         "1. УПРАВЛЕНИЕ: Нажми на фишку своего цвета, потяни в противоположную сторону (как в бильярде) и отпусти для удара.",
-        "2. ХОДЫ: Игроки ходят строго по очереди. Твой круг подсвечивается вращающейся рамкой.",
-        "3. ЦЕЛЬ: Забить белый мяч в ворота соперника.",
-        "4. ЭВАКУАЦИЯ: Если фишка залетит в створ ворот, на следующем ходу игра плавно вытолкнет её на поле.",
-        "5. ТУРНИР: Создавай плей-офф сетки. Каждая команда получает свой уникальный неоновый цвет фишек!"
+        "2. ХОДЫ: Игроки ходят строго по очереди. Во время твоего хода вокруг твоих фишек вращаются черные штрихи.",
+        "3. ЦЕЛЬ: Забить мяч в ворота соперника.",
+        "4. ЭВАКУАЦИЯ: Если фишка залетит в створ ворот, на следующем ходу игра плавно выталкнет её на поле.",
+        "5. ТУРНИР: Создавай плей-офф сетки. Каждая команда получает свой уникальный цвет фишек!"
     ];
     for (let r of rules) {
         text(r, bx + 15, txtY, boxW - 30);
@@ -850,8 +850,7 @@ function drawTutorialModal() {
     noStroke(); fill(255); textAlign(CENTER, CENTER); textStyle(BOLD); text("ПОНЯТНО", width/2, closeBtn.y + closeBtn.h/2);
     pop();
 }
-
-function drawTournamentCreate() {
+ drawTournamentCreate() {
     push(); textAlign(CENTER, CENTER); fill(255); textSize(20); textStyle(BOLD); text("НОВЫЙ ТУРНИР", width/2, height * 0.25);
     textSize(13); textStyle(NORMAL); fill(150); text("Выберите количество команд для плей-офф:", width/2, height * 0.30);
     
