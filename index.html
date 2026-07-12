@@ -297,7 +297,13 @@ function playSound(type, volume = 1.0) {
         } else if (type === 'goal') {
             soundKey = 'score';
         }
+          else if (type === 'click') {
+            soundKey = 'click';
+        }
 
+        if (gameSounds && gameSounds[soundKey]) {
+            let audio = gameSounds[soundKey];
+            
         if (gameSounds && gameSounds[soundKey]) {
             let audio = gameSounds[soundKey];
             
